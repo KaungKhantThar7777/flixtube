@@ -10,4 +10,4 @@ COPY ./src ./src
 
 COPY ./videos ./videos
 
-CMD ["node", "src/index.js"]
+CMD npm start
