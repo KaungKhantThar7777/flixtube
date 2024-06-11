@@ -58,7 +58,7 @@ async function main() {
   });
 
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT} v2 update.`);
+    console.log(`Server running on port ${PORT}.`);
   });
 }
 
