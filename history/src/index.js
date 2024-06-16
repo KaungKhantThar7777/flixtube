@@ -40,11 +40,13 @@ async function main() {
 
   const messageChannel = await messageConnection.createChannel();
 
-  await messageChannel.assertQueue("viewed", {});
+  await messageChannel.assertExchange("viewed", "fanout");
 
-  console.log(`Created "viewed" queue.`);
+  const { queue } = await messageChannel.assertQueue("", { exclusive: true });
 
-  await messageChannel.consume("viewed", async (msg) => {
+  await messageChannel.bindQueue(queue, "viewed", "");
+
+  await messageChannel.consume(queue, async (msg) => {
     console.log("Received a 'viewed' message");
 
     const parsedMsg = JSON.parse(msg.content.toString());

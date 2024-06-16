@@ -16,13 +16,15 @@ async function main() {
 
   const messageChannel = await connection.createChannel();
 
-  function sendViewedMessage(messageChannel, videoPath) {
-    console.log(`Publishing message on "viewed" queue.`);
+  await messageChannel.assertExchange("viewed", "fanout");
+
+  function broadcastViewedMessage(messageChannel, videoPath) {
+    console.log(`Publishing message on "viewed" exchange.`);
 
     const msg = { videoPath };
     const stringMsg = JSON.stringify(msg);
 
-    messageChannel.publish("", "viewed", Buffer.from(stringMsg));
+    messageChannel.publish("viewed", "", Buffer.from(stringMsg));
   }
   const app = express();
 
@@ -39,7 +41,7 @@ async function main() {
 
     fs.createReadStream(videoPath).pipe(res);
 
-    sendViewedMessage(messageChannel, videoPath);
+    broadcastViewedMessage(messageChannel, videoPath);
   });
 
   app.listen(PORT, () => {
