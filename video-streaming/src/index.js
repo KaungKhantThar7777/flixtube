@@ -1,48 +1,33 @@
 const express = require("express");
 const http = require("http");
+const amqplib = require("amqplib");
 const fs = require("fs");
 
-if (!process.env.PORT) {
-  throw new Error("PORT must be defined!!!");
-}
 const PORT = process.env.PORT;
-
-const app = express();
-let count = 0;
-function sendViewedMessage(videoPath) {
-  console.log(count++);
-  const postOptions = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-
-  const requestBody = {
-    videoPath,
-  };
-
-  const req = http.request("http://history/viewed", postOptions);
-
-  req.on("end", () => {
-    console.log("Sent `viewed` message to history microservice");
-  });
-
-  req.on("error", (err) => {
-    console.error("Failed to send 'viewed' message!");
-    console.error((err && err.stack) || err);
-  });
-
-  req.write(JSON.stringify(requestBody));
-  req.end();
+const RABBIT = process.env.RABBIT;
+if (!PORT || !RABBIT) {
+  throw new Error("PORT and RABBIT must be defined!!!");
 }
 
 async function main() {
+  console.log(`Connecting to RabbitMQ server at ${RABBIT}.`);
+
+  const connection = await amqplib.connect(RABBIT);
+
+  const messageChannel = await connection.createChannel();
+
+  function sendViewedMessage(messageChannel, videoPath) {
+    console.log(`Publishing message on "viewed" queue.`);
+
+    const msg = { videoPath };
+    const stringMsg = JSON.stringify(msg);
+
+    messageChannel.publish("", "viewed", Buffer.from(stringMsg));
+  }
   const app = express();
 
   app.get("/video", async (req, res) => {
     console.log("get /video");
-    // Route for streaming video.
 
     const videoPath = "./videos/SampleVideo_1280x720_1mb.mp4";
     const stats = await fs.promises.stat(videoPath);
@@ -54,7 +39,7 @@ async function main() {
 
     fs.createReadStream(videoPath).pipe(res);
 
-    sendViewedMessage(videoPath); // Sends the "viewed" message to indicate this video has been watched.
+    sendViewedMessage(messageChannel, videoPath);
   });
 
   app.listen(PORT, () => {

@@ -19,6 +19,9 @@ services:
       - "4001:80"
     environment:
       - PORT=80
+      - RABBIT=amqp://guest:guest@rabbit:5672
+    depends_on:
+      - rabbit
     restart: "no"
   history:
     image: history
@@ -36,6 +39,15 @@ services:
       - NODE_ENV=development
       - DBHOST=mongodb://db:27017
       - DBNAME=flixtube
+      - RABBIT=amqp://guest:guest@rabbit:5672
     depends_on:
       - db
+      - rabbit
     restart: "no"
+  rabbit:
+    image: rabbitmq:3.12.4-management
+    container_name: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: "unless-stopped"

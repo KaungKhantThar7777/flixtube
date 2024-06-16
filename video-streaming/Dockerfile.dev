@@ -6,4 +6,5 @@ COPY package*.json ./
 
 
 CMD npm install --prefer-offline && \
+    npx wait-port rabbit:5672 && \
     npm run start:dev

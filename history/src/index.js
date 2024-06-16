@@ -1,9 +1,11 @@
 const express = require("express");
 const mongodb = require("mongodb");
+const amqplib = require("amqplib");
 
 const PORT = process.env.PORT;
 const DBHOST = process.env.DBHOST;
 const DBNAME = process.env.DBNAME;
+const RABBIT = process.env.RABBIT;
 
 if (!process.env.PORT) {
   throw new Error(
@@ -23,14 +25,40 @@ if (!process.env.DBNAME) {
   );
 }
 
+if (!process.env.RABBIT) {
+  throw new Error(
+    "Please specify the name of the RabbitMQ host using environment variable RABBIT"
+  );
+}
+
 async function main() {
+  const client = await mongodb.MongoClient.connect(DBHOST);
+  const db = client.db(DBNAME);
+  const historyCollection = db.collection("history");
+
+  const messageConnection = await amqplib.connect(RABBIT);
+
+  const messageChannel = await messageConnection.createChannel();
+
+  await messageChannel.assertQueue("viewed", {});
+
+  console.log(`Created "viewed" queue.`);
+
+  await messageChannel.consume("viewed", async (msg) => {
+    console.log("Received a 'viewed' message");
+
+    const parsedMsg = JSON.parse(msg.content.toString());
+
+    await historyCollection.insertOne({ videoPath: parsedMsg.videoPath });
+
+    console.log("Acknowledged 'viewed' message");
+
+    messageChannel.ack(msg);
+  });
+
   const app = express();
 
   app.use(express.json());
-  const client = await mongodb.MongoClient.connect(DBHOST);
-  const db = client.db(DBNAME);
-
-  const historyCollection = db.collection("history");
 
   app.post("/viewed", async (req, res) => {
     const videoPath = req.body.videoPath;
