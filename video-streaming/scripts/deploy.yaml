@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: video-streaming
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: video-streaming
+  template:
+    metadata:
+      labels:
+        app: video-streaming
+    spec:
+      containers:
+        - name: video-streaming
+          image: video-streaming:1
+          imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "4000"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-streaming
+spec:
+  selector:
+    app: video-streaming
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 4000
+      nodePort: 30000
